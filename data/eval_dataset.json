@@ -1,0 +1,14 @@
+[
+  {
+    "query": "What is condition-based maintenance?",
+    "expected_keyword": "condition-based maintenance"
+  },
+  {
+    "query": "What are maintenance strategies?",
+    "expected_keyword": "maintenance strategies"
+  },
+  {
+    "query": "What is predictive maintenance?",
+    "expected_keyword": "predictive maintenance"
+  }
+]
