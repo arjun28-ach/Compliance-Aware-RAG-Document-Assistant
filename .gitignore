@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+myenv/
+venv/
+.env
+.env.local
+
+# Python packaging
+*.egg-info/
+build/
+dist/
+
+# Logs
+*.log
+app/logs/
+src/app/logs/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Node / Next
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Uploaded / raw files
+data/raw/
+data/uploads/
+src/app/storage/files/
+
+# Qdrant / local db / docker volumes if present
+storage/
+qdrant_storage/
+
+# Misc
+.coverage
+pytest_cache/
+.mypy_cache/

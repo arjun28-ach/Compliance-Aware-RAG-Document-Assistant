@@ -1,0 +1,46 @@
+[project]
+name = "rag-assistant"
+version = "0.1.0"
+description = "Compliance-aware RAG Document Assistant"
+requires-python = ">=3.11"
+
+dependencies = [
+    # ===== API =====
+    "fastapi",
+    "uvicorn[standard]",
+
+    # ===== DATA / VALIDATION =====
+    "pydantic",
+    "pydantic-settings",
+
+    # ===== VECTOR DATABASE =====
+    "qdrant-client",
+
+    # ===== EMBEDDINGS =====
+    "sentence-transformers",
+    "torch",
+
+    # ===== HYBRID RETRIEVAL =====
+    "rank-bm25",
+
+    # ===== NLP / TEXT PROCESSING =====
+    "numpy",
+    "tqdm",
+
+    # ===== PDF / INGESTION =====
+    "PyMuPDF",
+
+    # ===== OPTIONAL (future upgrades) =====
+    "jinja2",
+
+    "python-multipart",
+
+    "google-genai",
+
+    
+
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
