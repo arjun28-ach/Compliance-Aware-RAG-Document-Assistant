@@ -10,26 +10,22 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://compliance-aware-rag-document-assis.vercel.app",
+        "http://127.0.0.1:3000",
+        "https://compliance-aware-rag-document-assistant-k9b2f6bc5.vercel.app",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 def root():
-    return {
-        "status": "ok",
-        "message": "RAG Assistant API is running",
-    }
-
+    return {"status": "ok", "message": "RAG Assistant API is running"}
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
 
 app.include_router(upload_router)
 app.include_router(chat_router)
