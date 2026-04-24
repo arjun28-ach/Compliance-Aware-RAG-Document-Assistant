@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     QDRANT_URL: str = "http://qdrant:6333"
+    QDRANT_API_KEY: str | None = None
     COLLECTION_NAME: str = "documents"
 
     GOOGLE_API_KEY: str

@@ -8,7 +8,10 @@ from app.services.hybrid_retriever import HybridRetriever
 from app.services.reranker import Reranker
 
 
-client = QdrantClient(url=settings.QDRANT_URL)
+client = QdrantClient(
+    url=settings.QDRANT_URL,
+    api_key=settings.QDRANT_API_KEY,
+)
 
 vector_store = VectorStore(
     client=client,
