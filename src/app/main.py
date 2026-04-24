@@ -10,7 +10,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://your-vercel-app-url.vercel.app",
+        "https://compliance-aware-rag-document-assis.vercel.app/",
     ],
     allow_credentials=True,
     allow_methods=["*"],
