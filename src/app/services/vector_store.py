@@ -1,6 +1,14 @@
-from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
+from qdrant_client.models import (
+    VectorParams,
+    Distance,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+    PayloadSchemaType,
+)
 import hashlib
-import uuid
+#import uuid
 
 
 class VectorStore:
@@ -23,6 +31,9 @@ class VectorStore:
                     distance=Distance.COSINE,
                 ),
             )
+
+        # Required for Qdrant Cloud filtering
+        self._ensure_payload_indexes()
 
     # -------------------------
     # Hashing
@@ -158,3 +169,20 @@ class VectorStore:
             for p in points
             if p.payload and "text" in p.payload
         ]
+    
+    def _ensure_payload_indexes(self):
+        indexes = [
+            ("chunk_hash", PayloadSchemaType.KEYWORD),
+            ("source", PayloadSchemaType.KEYWORD),
+        ]
+
+        for field_name, schema_type in indexes:
+            try:
+                self.client.create_payload_index(
+                    collection_name=self.collection_name,
+                    field_name=field_name,
+                    field_schema=schema_type,
+                )
+            except Exception:
+                # Index may already exist. Do not crash startup.
+                pass
