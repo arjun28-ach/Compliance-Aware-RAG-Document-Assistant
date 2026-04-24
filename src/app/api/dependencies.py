@@ -5,7 +5,7 @@ from app.services.vector_store import VectorStore
 from app.services.embedder import Embedder
 from app.services.bm25_retriever import BM25Retriever
 from app.services.hybrid_retriever import HybridRetriever
-from app.services.reranker import Reranker
+#from app.services.reranker import Reranker
 
 
 client = QdrantClient(

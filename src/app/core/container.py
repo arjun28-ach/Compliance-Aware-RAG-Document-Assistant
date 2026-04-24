@@ -5,7 +5,7 @@ from app.services.vector_store import VectorStore
 from app.services.embedder import Embedder
 from app.services.hybrid_retriever import HybridRetriever
 from app.services.bm25_retriever import BM25Retriever
-from app.services.reranker import Reranker
+#from app.services.reranker import Reranker
 
 
 class Container:
@@ -30,7 +30,7 @@ class Container:
         if self._store is None:
             client = self.get_client()
             self._store = VectorStore(client, settings.COLLECTION_NAME)
-            self._store.ensure_collection(vector_size=384)
+            self._store.ensure_collection(vector_size=768)
         return self._store
 
     # -------------------------
@@ -50,7 +50,7 @@ class Container:
             embedder = self.get_embedder()
 
             bm25_builder = BM25Retriever()
-            reranker = Reranker()
+            reranker = None
 
             self._retriever = HybridRetriever(
                 vector_store=store,
