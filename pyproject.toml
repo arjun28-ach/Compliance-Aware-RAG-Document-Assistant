@@ -17,8 +17,8 @@ dependencies = [
     "qdrant-client",
 
     # ===== EMBEDDINGS =====
-    "sentence-transformers",
-    "torch",
+    # "sentence-transformers",
+    # "torch",
 
     # ===== HYBRID RETRIEVAL =====
     "rank-bm25",

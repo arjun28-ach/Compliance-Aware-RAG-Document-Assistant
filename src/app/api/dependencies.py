@@ -17,11 +17,11 @@ vector_store = VectorStore(
     client=client,
     collection_name=settings.COLLECTION_NAME
 )
-vector_store.ensure_collection(vector_size=384)
+vector_store.ensure_collection(vector_size=768)
 
 embedder = Embedder()
 bm25_builder = BM25Retriever()
-reranker = Reranker()
+reranker = None
 
 retriever = HybridRetriever(
     vector_store=vector_store,

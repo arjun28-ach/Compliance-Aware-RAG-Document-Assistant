@@ -1,21 +1,26 @@
-from sentence_transformers import SentenceTransformer
+from google import genai
+from app.config import settings
 
 
 class Embedder:
-    def __init__(self, model_name="sentence-transformers/all-MiniLM-L6-v2"):
-        self.model = SentenceTransformer(model_name)
+    def __init__(self):
+        self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        self.model = "gemini-embedding-001"
 
-    # -------------------------
-    # Query embedding (search)
-    # -------------------------
     def embed_query(self, query: str):
-        return self.model.encode(query).tolist()
+        response = self.client.models.embed_content(
+            model=self.model,
+            contents=query,
+        )
+        return response.embeddings[0].values
 
-    # -------------------------
-    # Batch embedding (ingestion)
-    # -------------------------
     def embed_documents(self, documents: list[str]):
         if not documents:
             return []
 
-        return self.model.encode(documents).tolist()
+        response = self.client.models.embed_content(
+            model=self.model,
+            contents=documents,
+        )
+
+        return [embedding.values for embedding in response.embeddings]
