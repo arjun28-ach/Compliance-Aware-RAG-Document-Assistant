@@ -30,7 +30,7 @@ class Container:
         if self._store is None:
             client = self.get_client()
             self._store = VectorStore(client, settings.COLLECTION_NAME)
-            self._store.ensure_collection(vector_size=768)
+            self._store.ensure_collection(vector_size=3072)
         return self._store
 
     # -------------------------

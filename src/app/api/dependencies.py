@@ -17,7 +17,7 @@ vector_store = VectorStore(
     client=client,
     collection_name=settings.COLLECTION_NAME
 )
-vector_store.ensure_collection(vector_size=768)
+vector_store.ensure_collection(vector_size=3072)
 
 embedder = Embedder()
 bm25_builder = BM25Retriever()
