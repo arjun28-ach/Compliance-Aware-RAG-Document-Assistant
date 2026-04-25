@@ -16,15 +16,14 @@ class HybridRetriever:
         self.rerank_threshold = -2.0
 
     def initialize(self, documents=None):
-        docs = documents or self.store.get_all_documents() or []
+        """
+        No global initialization for document-isolated retrieval.
 
-        if not docs:
-            self.documents = []
-            self.bm25 = None
-            return
-
-        self.documents = docs
-        self.bm25 = self.bm25_builder.build(docs)
+        Each uploaded PDF has its own doc_id. BM25 is built per document
+        inside search() using get_documents_by_doc_id(doc_id).
+        """
+        self.documents = []
+        self.bm25 = None
 
     def search(self, query: str, top_k: int = 5, doc_id: str | None = None, alpha: float = 0.5):
         if not query or not isinstance(query, str):
