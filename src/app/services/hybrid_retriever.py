@@ -26,46 +26,44 @@ class HybridRetriever:
         self.documents = docs
         self.bm25 = self.bm25_builder.build(docs)
 
-    def search(self, query: str, top_k: int = 5, alpha: float = 0.5):
-        trace = QueryTrace(query)
-
+    def search(self, query: str, top_k: int = 5, doc_id: str | None = None, alpha: float = 0.5):
         if not query or not isinstance(query, str):
             return []
 
         alpha = max(0.0, min(1.0, alpha))
 
+        # Get only this document's text for BM25
         bm25_results = []
-        if self.bm25:
+        if doc_id:
+            docs = self.store.get_documents_by_doc_id(doc_id)
+        else:
+            docs = self.documents
+
+        if docs:
             try:
-                bm25_results = self.bm25.search(query, top_k=top_k * 3)
+                temp_bm25 = self.bm25_builder.build(docs)
+                bm25_results = temp_bm25.search(query, top_k=top_k * 3)
             except Exception:
                 bm25_results = []
 
-        trace.add_stage("bm25", bm25_results)
-
-        try:
-            dense_results = self.store.search_dense(
-                query=query,
-                embedder=self.embedder,
-                top_k=top_k * 3
-            )
-        except Exception:
-            dense_results = []
-
-        trace.add_stage("dense", dense_results)
+        dense_results = self.store.search_dense(
+            query=query,
+            embedder=self.embedder,
+            top_k=top_k * 3,
+            doc_id=doc_id,
+        )
 
         bm25_results = self._normalize_bm25(bm25_results)
 
         combined = {}
 
         for text, score in bm25_results:
-            if not text:
-                continue
             combined[text] = {
                 "text": text,
                 "bm25": float(score),
                 "dense": 0.0,
                 "source": "Uploaded PDF",
+                "doc_id": doc_id,
             }
 
         for r in dense_results:
@@ -79,37 +77,35 @@ class HybridRetriever:
                     "bm25": 0.0,
                     "dense": float(r.get("score", 0.0)),
                     "source": r.get("source", "Uploaded PDF"),
+                    "doc_id": r.get("doc_id"),
                 }
             else:
                 combined[text]["dense"] = float(r.get("score", 0.0))
                 combined[text]["source"] = r.get("source", "Uploaded PDF")
+                combined[text]["doc_id"] = r.get("doc_id")
 
         fused = []
+
         for item in combined.values():
-            score = (alpha * item["dense"]) + ((1 - alpha) * item["bm25"])
-            fused.append({
-                "text": item["text"],
-                "score": float(score),
-                "source": item["source"],
-            })
+            score = alpha * item["dense"] + (1 - alpha) * item["bm25"]
+            fused.append(
+                {
+                    "text": item["text"],
+                    "score": float(score),
+                    "source": item["source"],
+                    "doc_id": item["doc_id"],
+                }
+            )
 
         fused.sort(key=lambda x: x["score"], reverse=True)
-        trace.add_stage("fusion", fused)
 
         if self.reranker and fused:
             try:
-                reranked = self.reranker.rerank(query, fused, top_k * 2)
-                final = self._filter_reranked(reranked)[:top_k]
+                return self.reranker.rerank(query, fused, top_k)
             except Exception:
-                final = fused[:top_k]
-        else:
-            final = fused[:top_k]
+                return fused[:top_k]
 
-        trace.add_stage("rerank", final)
-        trace.set_final(final)
-        self.logger.log_trace(trace.to_dict())
-
-        return final
+        return fused[:top_k]
 
     def _filter_reranked(self, results):
         filtered = []

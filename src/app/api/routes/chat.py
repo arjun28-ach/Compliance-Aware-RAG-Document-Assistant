@@ -9,6 +9,7 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     query: str
+    doc_id: str
 
 
 def extract_source_title(text: str) -> str:
@@ -16,30 +17,17 @@ def extract_source_title(text: str) -> str:
         return "Relevant section"
 
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-
-    for line in lines[:8]:
-        if 4 <= len(line) <= 90:
-            upper_ratio = sum(1 for ch in line if ch.isalpha() and ch.isupper()) / max(
-                sum(1 for ch in line if ch.isalpha()), 1
-            )
-            if upper_ratio > 0.6:
-                return line
-
-            lowered = line.lower()
-            keywords = [
-                "abstract", "introduction", "conclusion", "results", "discussion",
-                "methodology", "summary", "crop", "disease", "monitoring"
-            ]
-            if any(k in lowered for k in keywords):
-                return line
-
     return lines[0][:90] if lines else "Relevant section"
 
 
 @router.post("/chat")
 def chat(req: ChatRequest, retriever=Depends(get_retriever)):
     try:
-        sources = retriever.search(req.query)
+        sources = retriever.search(
+            query=req.query,
+            doc_id=req.doc_id,
+        )
+
         llm = LLMService()
         answer = llm.generate_answer(req.query, sources)
 
@@ -49,6 +37,7 @@ def chat(req: ChatRequest, retriever=Depends(get_retriever)):
                 "text": s.get("text", "")[:320],
                 "score": s.get("score"),
                 "source": s.get("source", "Uploaded PDF"),
+                "doc_id": s.get("doc_id"),
                 "rerank_score": s.get("rerank_score"),
             }
             for s in sources[:3]
@@ -56,6 +45,7 @@ def chat(req: ChatRequest, retriever=Depends(get_retriever)):
 
         return {
             "query": req.query,
+            "doc_id": req.doc_id,
             "answer": answer,
             "sources": clean_sources,
         }

@@ -30,13 +30,19 @@ export async function uploadPDF(file: File): Promise<UploadResponse> {
   return handleResponse<UploadResponse>(res)
 }
 
-export async function askQuestion(query: string): Promise<ChatResponse> {
+export async function askQuestion(
+  query: string,
+  docId: string
+): Promise<ChatResponse> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({
+      query,
+      doc_id: docId,
+    }),
   })
 
   return handleResponse<ChatResponse>(res)

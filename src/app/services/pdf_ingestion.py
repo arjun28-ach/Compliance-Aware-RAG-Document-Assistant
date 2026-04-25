@@ -1,3 +1,4 @@
+import uuid
 import fitz
 
 from app.utils.chunker import TextChunker
@@ -15,10 +16,17 @@ class PDFIngestionService:
         return "\n\n".join(pages).strip()
 
     def ingest(self, file_bytes: bytes, filename: str) -> dict:
+        doc_id = str(uuid.uuid4())
+
         text = self.extract_text(file_bytes)
 
         if not text:
-            return {"filename": filename, "chunks": 0, "status": "empty"}
+            return {
+                "doc_id": doc_id,
+                "filename": filename,
+                "chunks": 0,
+                "status": "empty",
+            }
 
         chunks = self.chunker.chunk(text)
         embeddings = self.embedder.embed_documents(chunks)
@@ -27,9 +35,11 @@ class PDFIngestionService:
             chunks=chunks,
             embeddings=embeddings,
             source_file=filename,
+            doc_id=doc_id,
         )
 
         return {
+            "doc_id": doc_id,
             "filename": filename,
             "chunks": len(chunks),
             "status": "uploaded",

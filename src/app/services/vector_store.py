@@ -8,7 +8,7 @@ from qdrant_client.models import (
     PayloadSchemaType,
 )
 import hashlib
-#import uuid
+import uuid
 
 
 class VectorStore:
@@ -16,9 +16,6 @@ class VectorStore:
         self.client = client
         self.collection_name = collection_name
 
-    # -------------------------
-    # Collection lifecycle
-    # -------------------------
     def ensure_collection(self, vector_size: int):
         collections = self.client.get_collections().collections
         names = {c.name for c in collections}
@@ -32,27 +29,41 @@ class VectorStore:
                 ),
             )
 
-        # Required for Qdrant Cloud filtering
         self._ensure_payload_indexes()
 
-    # -------------------------
-    # Hashing
-    # -------------------------
+    def _ensure_payload_indexes(self):
+        indexes = [
+            ("chunk_hash", PayloadSchemaType.KEYWORD),
+            ("source", PayloadSchemaType.KEYWORD),
+            ("doc_id", PayloadSchemaType.KEYWORD),
+        ]
+
+        for field_name, schema_type in indexes:
+            try:
+                self.client.create_payload_index(
+                    collection_name=self.collection_name,
+                    field_name=field_name,
+                    field_schema=schema_type,
+                )
+            except Exception:
+                pass
+
     def _hash_text(self, text: str) -> str:
         return hashlib.md5(text.encode("utf-8")).hexdigest()
 
-    # -------------------------
-    # Safe existence check
-    # -------------------------
-    def chunk_exists(self, chunk_hash: str) -> bool:
-        result = self.client.scroll(
+    def chunk_exists(self, chunk_hash: str, doc_id: str) -> bool:
+        points, _ = self.client.scroll(
             collection_name=self.collection_name,
             scroll_filter=Filter(
                 must=[
                     FieldCondition(
                         key="chunk_hash",
-                        match=MatchValue(value=chunk_hash)
-                    )
+                        match=MatchValue(value=chunk_hash),
+                    ),
+                    FieldCondition(
+                        key="doc_id",
+                        match=MatchValue(value=doc_id),
+                    ),
                 ]
             ),
             limit=1,
@@ -60,28 +71,25 @@ class VectorStore:
             with_vectors=False,
         )
 
-        points, _ = result
         return len(points) > 0
 
-    # -------------------------
-    # Insert documents (safe + deduplicated)
-    # -------------------------
-    def add_documents(self, chunks, embeddings, source_file):
+    def add_documents(self, chunks, embeddings, source_file: str, doc_id: str):
         points = []
 
         for chunk, embedding in zip(chunks, embeddings):
             chunk_hash = self._hash_text(chunk)
 
-            if self.chunk_exists(chunk_hash):
+            if self.chunk_exists(chunk_hash, doc_id):
                 continue
 
             points.append(
                 PointStruct(
-                    id=chunk_hash,
+                    id=str(uuid.uuid4()),
                     vector=embedding,
                     payload={
                         "text": chunk,
                         "source": source_file,
+                        "doc_id": doc_id,
                         "chunk_hash": chunk_hash,
                     },
                 )
@@ -93,16 +101,21 @@ class VectorStore:
                 points=points,
             )
 
-    # -------------------------
-    # Safe document retrieval
-    # -------------------------
-    def get_all_documents(self):
+    def get_documents_by_doc_id(self, doc_id: str):
         all_docs = []
         offset = None
 
         while True:
             points, offset = self.client.scroll(
                 collection_name=self.collection_name,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="doc_id",
+                            match=MatchValue(value=doc_id),
+                        )
+                    ]
+                ),
                 limit=100,
                 offset=offset,
                 with_payload=True,
@@ -118,71 +131,37 @@ class VectorStore:
                 break
 
         return all_docs
-    
-    # -------------------------
-    # Get documents by source (PDF/file level retrieval)
-    # -------------------------
-    def get_documents_by_source(self, doc_id: str):
-        points, _ = self.client.scroll(
-            collection_name=self.collection_name,
-            scroll_filter=Filter(
-                must=[
-                    FieldCondition(
-                        key="source",
-                        match=MatchValue(value=doc_id)
-                    )
-                ]
-            ),
-            limit=100,
-            with_payload=True,
-            with_vectors=False,
-        )
 
-        return [
-            p.payload["text"]
-            for p in points
-            if p.payload and "text" in p.payload
-        ]
-    
-    # -------------------------
-    # Dense vector search
-    # -------------------------
-    def search_dense(self, query: str, embedder, top_k: int = 5):
+    def search_dense(self, query: str, embedder, top_k: int = 5, doc_id: str | None = None):
         query_vector = embedder.embed_query(query)
 
-        results = self.client.query_points(
+        query_filter = None
+        if doc_id:
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="doc_id",
+                        match=MatchValue(value=doc_id),
+                    )
+                ]
+            )
+
+        results = self.client.search(
             collection_name=self.collection_name,
-            query=query_vector,
+            query_vector=query_vector,
+            query_filter=query_filter,
             limit=top_k,
             with_payload=True,
             with_vectors=False,
         )
 
-        points = results.points if hasattr(results, "points") else []
-
         return [
             {
-                "text": (p.payload or {}).get("text"),
-                "score": float(p.score),
-                "source": (p.payload or {}).get("source"),
+                "text": (r.payload or {}).get("text"),
+                "score": float(r.score),
+                "source": (r.payload or {}).get("source"),
+                "doc_id": (r.payload or {}).get("doc_id"),
             }
-            for p in points
-            if p.payload and "text" in p.payload
+            for r in results
+            if r.payload and "text" in r.payload
         ]
-    
-    def _ensure_payload_indexes(self):
-        indexes = [
-            ("chunk_hash", PayloadSchemaType.KEYWORD),
-            ("source", PayloadSchemaType.KEYWORD),
-        ]
-
-        for field_name, schema_type in indexes:
-            try:
-                self.client.create_payload_index(
-                    collection_name=self.collection_name,
-                    field_name=field_name,
-                    field_schema=schema_type,
-                )
-            except Exception:
-                # Index may already exist. Do not crash startup.
-                pass

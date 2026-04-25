@@ -12,6 +12,7 @@ function createId() {
 }
 
 export default function HomePage() {
+  const [docId, setDocId] = useState<string>("")
   const [uploadedFileName, setUploadedFileName] = useState<string>("")
   const [chunksCount, setChunksCount] = useState<number | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -19,14 +20,21 @@ export default function HomePage() {
   const [error, setError] = useState<string>("")
   const [draftQuestion, setDraftQuestion] = useState("")
 
-  const hasUploadedDocument = Boolean(uploadedFileName)
+  const hasUploadedDocument = Boolean(docId)
   const emptyState = useMemo(() => messages.length === 0, [messages.length])
 
   async function handleAsk(question: string) {
     const trimmed = question.trim()
+
     if (!trimmed || isAsking) return
 
+    if (!docId) {
+      setError("Please upload a document first.")
+      return
+    }
+
     setError("")
+
     const userMessage: Message = {
       id: createId(),
       role: "user",
@@ -38,7 +46,7 @@ export default function HomePage() {
     setIsAsking(true)
 
     try {
-      const res = await askQuestion(trimmed)
+      const res = await askQuestion(trimmed, docId)
 
       const assistantMessage: Message = {
         id: createId(),
@@ -52,6 +60,7 @@ export default function HomePage() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong."
+
       setError(message)
 
       const assistantMessage: Message = {
@@ -68,9 +77,10 @@ export default function HomePage() {
   }
 
   function handleStartNewChat() {
-    setMessages([])
+    setDocId("")
     setUploadedFileName("")
     setChunksCount(null)
+    setMessages([])
     setError("")
     setIsAsking(false)
     setDraftQuestion("")
@@ -87,6 +97,7 @@ export default function HomePage() {
               uploadedFileName={uploadedFileName}
               chunksCount={chunksCount}
               onUploaded={(data) => {
+                setDocId(data.doc_id)
                 setUploadedFileName(data.filename)
                 setChunksCount(data.chunks)
                 setMessages([])
@@ -119,7 +130,7 @@ export default function HomePage() {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                   <p className="text-xs text-slate-400">Status</p>
                   <p className="mt-1 text-sm font-medium text-emerald-300">
-                    {uploadedFileName ? "Ready for questions" : "Upload a PDF first"}
+                    {docId ? "Ready for questions" : "Upload a PDF first"}
                   </p>
                 </div>
               </div>
