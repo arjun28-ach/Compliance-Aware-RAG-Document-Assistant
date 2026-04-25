@@ -136,6 +136,7 @@ class VectorStore:
         query_vector = embedder.embed_query(query)
 
         query_filter = None
+
         if doc_id:
             query_filter = Filter(
                 must=[
@@ -146,22 +147,25 @@ class VectorStore:
                 ]
             )
 
-        results = self.client.search(
+        result = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=query_filter,
             limit=top_k,
             with_payload=True,
             with_vectors=False,
         )
 
+        points = result.points
+
         return [
             {
-                "text": (r.payload or {}).get("text"),
-                "score": float(r.score),
-                "source": (r.payload or {}).get("source"),
-                "doc_id": (r.payload or {}).get("doc_id"),
+                "text": (point.payload or {}).get("text"),
+                "score": float(point.score),
+                "source": (point.payload or {}).get("source"),
+                "doc_id": (point.payload or {}).get("doc_id"),
             }
-            for r in results
-            if r.payload and "text" in r.payload
+            for point in points
+            if point.payload and "text" in point.payload
         ]
+    
